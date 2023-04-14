@@ -19,7 +19,7 @@
 
 #pragma once
 
-#include <features/features_cpu.h>
+#include <libretro-common/features/features_cpu.h>
 #include <stdio.h>
 
 #include <borealis/actions.hpp>
@@ -61,6 +61,12 @@ enum class ViewBackground
     BACKDROP
 };
 
+enum class ViewType
+{
+  VIEW,
+  SIDEBARITEM,
+};
+
 extern NVGcolor transparent;
 
 class View;
@@ -83,9 +89,10 @@ class View
     ViewBackground background = ViewBackground::NONE;
 
     void drawBackground(NVGcontext* vg, FrameContext* ctx, Style* style);
-    void drawHighlight(NVGcontext* vg, ThemeValues* theme, float alpha, Style* style, bool background);
+    void drawHighlight(NVGcontext* vg, Theme* theme, float alpha, Style* style, bool background);
 
     float highlightAlpha = 0.0f;
+    float clickAnimationAlpha = 0.0f;
 
     bool dirty = true;
 
@@ -97,11 +104,13 @@ class View
     bool fadeIn           = false; // is the fade in animation running?
     bool forceTranslucent = false;
 
-    ThemeValues* themeOverride = nullptr;
+    Theme* themeOverride = nullptr;
 
     bool hidden = false;
 
     std::vector<Action> actions;
+
+    ViewType viewType = ViewType::VIEW;
 
     /**
      * Parent user data, typically the index of the view
@@ -204,11 +213,18 @@ class View
     void updateActionHint(Key key, std::string hintText);
     void setActionAvailable(Key key, bool available);
 
+    virtual void playClickAnimation();
+
     std::string describe() const { return typeid(*this).name(); }
 
     const std::vector<Action>& getActions()
     {
         return this->actions;
+    }
+
+    virtual ViewType getViewType()
+    {
+        return this->viewType;
     }
 
     /**
@@ -346,7 +362,7 @@ class View
      * in that direction - getNextFocus will then be called on our
      * parent if any
      */
-    virtual View* getNextFocus(FocusDirection direction, void* parentUserdata)
+    virtual View* getNextFocus(FocusDirection direction, View* currentView)
     {
         return nullptr;
     }
@@ -398,7 +414,7 @@ class View
       * Forces this view and its children to use
       * the specified theme variant
       */
-    void overrideThemeVariant(ThemeValues* newTheme);
+    void overrideThemeVariant(Theme* newTheme);
 
     virtual ~View();
 };

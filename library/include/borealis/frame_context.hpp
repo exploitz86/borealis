@@ -19,7 +19,7 @@
 
 #pragma once
 
-#include <nanovg.h>
+#include <nanovg/nanovg.h>
 
 #include <borealis/style.hpp>
 #include <borealis/theme.hpp>
@@ -31,6 +31,10 @@ class FontStash
 {
   public:
     int regular = 0;
+    int standard = 0;
+    int schinese  = 0;
+    int extSchinese  = 0;
+    int tchinese  = 0;
     int korean  = 0;
 
     int material      = 0;
@@ -43,7 +47,7 @@ class FrameContext
     NVGcontext* vg       = nullptr;
     float pixelRatio     = 0.0;
     FontStash* fontStash = nullptr;
-    ThemeValues* theme   = nullptr;
+    Theme* theme         = nullptr;
 };
 
 } // namespace brls

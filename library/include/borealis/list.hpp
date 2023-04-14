@@ -24,6 +24,7 @@
 #include <borealis/label.hpp>
 #include <borealis/rectangle.hpp>
 #include <borealis/scroll_view.hpp>
+#include <borealis/swkbd.hpp>
 #include <string>
 
 namespace brls
@@ -33,7 +34,8 @@ namespace brls
 // TODO: Use a Label with integrated ticker
 class ListItem : public View
 {
-  private:
+
+  protected:
     std::string label;
     std::string subLabel;
     std::string value;
@@ -44,14 +46,17 @@ class ListItem : public View
     std::string oldValue;
     bool oldValueFaint;
     float valueAnimation = 0.0f;
-
     bool checked = false; // check mark on the right
 
     unsigned textSize;
 
     bool drawTopSeparator = true;
 
+    Label* labelView       = nullptr;
     Label* descriptionView = nullptr;
+    Label* subLabelView    = nullptr;
+    Label* valueView       = nullptr;
+    Label* oldValueView    = nullptr;
     Image* thumbnailView   = nullptr;
 
     bool reduceDescriptionSpacing = false;
@@ -59,8 +64,6 @@ class ListItem : public View
     GenericEvent clickEvent;
 
     bool indented = false;
-
-    void resetValueAnimation();
 
   public:
     ListItem(std::string label, std::string description = "", std::string subLabel = "");
@@ -75,7 +78,9 @@ class ListItem : public View
     void setThumbnail(std::string imagePath);
     void setThumbnail(unsigned char* buffer, size_t bufferSize);
 
+    void setDescription(std::string description);
     bool hasDescription();
+    std::string getDescription();
     void setDrawTopSeparator(bool draw);
 
     bool getReduceDescriptionSpacing();
@@ -88,8 +93,10 @@ class ListItem : public View
     void setChecked(bool checked);
 
     void setLabel(std::string label);
-
     std::string getLabel();
+
+    void setSubLabel(std::string subLabel);
+    std::string getSubLabel();
 
     /**
      * Sets the value of this list item
@@ -128,12 +135,13 @@ class SelectListItem : public ListItem
     SelectListItem(std::string label, std::vector<std::string> values, unsigned selectedValue = 0, std::string description = "");
 
     void setSelectedValue(unsigned value);
+    unsigned getSelectedValue();
 
     ValueSelectedEvent* getValueSelectedEvent();
 
-  private:
+  protected:
     std::vector<std::string> values;
-    unsigned selectedValue;
+    unsigned selectedValue = 0;
 
     ValueSelectedEvent valueEvent;
 };
@@ -144,7 +152,7 @@ class SelectListItem : public ListItem
 // changes
 class ToggleListItem : public ListItem
 {
-  private:
+  protected:
     bool toggleState;
     std::string onValue, offValue;
 
@@ -165,9 +173,10 @@ class InputListItem : public ListItem
   protected:
     std::string helpText;
     int maxInputLength;
+    int kbdDisableBitmask;
 
   public:
-    InputListItem(std::string label, std::string initialValue, std::string helpText, std::string description = "", int maxInputLength = 32);
+    InputListItem(std::string label, std::string initialValue, std::string helpText, std::string description = "", int maxInputLength = 32, int kbdDisableBitmask = KeyboardKeyDisableBitmask::KEYBOARD_DISABLE_NONE);
 
     virtual bool onClick() override;
 };
@@ -177,7 +186,7 @@ class InputListItem : public ListItem
 class IntegerInputListItem : public InputListItem
 {
   public:
-    IntegerInputListItem(std::string label, int initialValue, std::string helpText, std::string description = "", int maxInputLength = 32);
+    IntegerInputListItem(std::string label, int initialValue, std::string helpText, std::string description = "", int maxInputLength = 32, int kbdDisableBitmask = KeyboardKeyDisableBitmask::KEYBOARD_DISABLE_NONE);
 
     virtual bool onClick() override;
 };

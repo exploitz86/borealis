@@ -68,8 +68,8 @@ NVGpaint View::a(NVGpaint paint)
 // TODO: Only draw views that are onscreen (w/ some margins)
 void View::frame(FrameContext* ctx)
 {
-    Style* style          = Application::getStyle();
-    ThemeValues* oldTheme = ctx->theme;
+    Style* style    = Application::getStyle();
+    Theme* oldTheme = ctx->theme;
 
     nvgSave(ctx->vg);
 
@@ -106,6 +106,23 @@ void View::frame(FrameContext* ctx)
         // Draw highlight
         if (this->highlightAlpha > 0.0f)
             this->drawHighlight(ctx->vg, ctx->theme, this->highlightAlpha, style, false);
+
+        // Draw click animation
+        if (this->clickAnimationAlpha > 0.0f)
+        {
+            unsigned insetTop, insetRight, insetBottom, insetLeft;
+            this->getHighlightInsets(&insetTop, &insetRight, &insetBottom, &insetLeft);
+
+            unsigned x      = this->x - insetLeft;
+            unsigned y      = this->y - insetTop;
+            unsigned width  = this->width + insetLeft + insetRight;
+            unsigned height = this->height + insetTop + insetBottom;
+
+            nvgFillColor(ctx->vg, RGBAf(ctx->theme->highlightColor1.r, ctx->theme->highlightColor1.g, ctx->theme->highlightColor1.b, this->clickAnimationAlpha));
+            nvgBeginPath(ctx->vg);
+            nvgRect(ctx->vg, x, y, width, height);
+            nvgFill(ctx->vg);
+        }
 
         //Reset clipping
         if (this->collapseState < 1.0f)
@@ -180,8 +197,28 @@ void View::expand(bool animated)
     }
 }
 
+void View::playClickAnimation()
+{
+    menu_animation_ctx_tag tag = (uintptr_t) &this->clickAnimationAlpha;
+    menu_animation_kill_by_tag(&tag);
+
+    this->clickAnimationAlpha = 0.3f;
+
+    menu_animation_ctx_entry_t entry;
+    entry.cb           = nullptr;
+    entry.duration     = 200;
+    entry.easing_enum  = EASING_LINEAR;
+    entry.subject      = &this->clickAnimationAlpha;
+    entry.tag          = tag;
+    entry.target_value = 0.0f;
+    entry.tick         = [](void* userdata) {};
+    entry.userdata     = nullptr;
+
+    menu_animation_push(&entry);
+}
+
 // TODO: Slight glow all around
-void View::drawHighlight(NVGcontext* vg, ThemeValues* theme, float alpha, Style* style, bool background)
+void View::drawHighlight(NVGcontext* vg, Theme* theme, float alpha, Style* style, bool background)
 {
     nvgSave(vg);
     nvgResetScissor(vg);
@@ -591,7 +628,7 @@ bool View::isHidden()
     return this->hidden;
 }
 
-void View::overrideThemeVariant(ThemeValues* theme)
+void View::overrideThemeVariant(Theme* theme)
 {
     this->themeOverride = theme;
 }
@@ -606,6 +643,9 @@ View::~View()
 
     menu_animation_ctx_tag collapseTag = (uintptr_t) & this->collapseState;
     menu_animation_kill_by_tag(&collapseTag);
+
+    menu_animation_ctx_tag tag = (uintptr_t) & this->clickAnimationAlpha;
+    menu_animation_kill_by_tag(&tag);
 
     // Parent userdata
     if (this->parentUserdata)
