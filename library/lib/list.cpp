@@ -197,6 +197,7 @@ void ListItem::setChecked(bool checked)
 
 void ListItem::setLabel(std::string label) {
     ListItem::label = label;
+    this->labelView->setText(ListItem::label);
 }
 
 bool ListItem::onClick()
@@ -489,11 +490,6 @@ bool ListItem::hasDescription()
 {
     return this->descriptionView;
 }
-
-//void ListItem::setLabel(std::string label)
-//{
-//    this->labelView->setText(label);
-//}
 
 std::string ListItem::getLabel()
 {
