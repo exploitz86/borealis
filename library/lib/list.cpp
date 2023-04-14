@@ -490,10 +490,10 @@ bool ListItem::hasDescription()
     return this->descriptionView;
 }
 
-void ListItem::setLabel(std::string label)
-{
-    this->labelView->setText(label);
-}
+//void ListItem::setLabel(std::string label)
+//{
+//    this->labelView->setText(label);
+//}
 
 std::string ListItem::getLabel()
 {
