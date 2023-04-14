@@ -28,11 +28,11 @@
 
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
-#include <glad.h>
+#include <glad/glad.h>
 
 #define GLM_FORCE_PURE
 #define GLM_ENABLE_EXPERIMENTAL
-#include <nanovg.h>
+#include <nanovg/nanovg.h>
 
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -41,7 +41,7 @@
 #include <glm/vec3.hpp>
 #include <glm/vec4.hpp>
 #define NANOVG_GL3_IMPLEMENTATION
-#include <nanovg_gl.h>
+#include <nanovg/nanovg_gl.h>
 
 #ifdef __SWITCH__
 #include <switch.h>
@@ -62,6 +62,8 @@ constexpr uint32_t WINDOW_HEIGHT = 720;
 
 // glfw code from the glfw hybrid app by fincs
 // https://github.com/fincs/hybrid_app
+
+using namespace brls::i18n::literals;
 
 namespace brls
 {
@@ -132,12 +134,7 @@ static void windowKeyCallback(GLFWwindow* window, int key, int scancode, int act
     }
 }
 
-bool Application::init(std::string title)
-{
-    return Application::init(title, Style::horizon(), Theme::horizon());
-}
-
-bool Application::init(std::string title, Style style, Theme theme)
+bool Application::init(std::string title, Style* style, LibraryViewsThemeVariantsWrapper* themeVariantsWrapper)
 {
     // Init rng
     std::srand(std::time(nullptr));
@@ -147,14 +144,20 @@ bool Application::init(std::string title, Style style, Theme theme)
     Application::notificationManager = new NotificationManager();
 
     // Init static variables
-    Application::currentStyle = style;
     Application::currentFocus = nullptr;
     Application::oldGamepad   = {};
     Application::gamepad      = {};
     Application::title        = title;
 
-    // Init theme to defaults
-    Application::setTheme(theme);
+    // Init theme and style
+    if (!themeVariantsWrapper)
+        themeVariantsWrapper = new LibraryViewsThemeVariantsWrapper(new HorizonLightTheme(), new HorizonDarkTheme());
+
+    if (!style)
+        style = new HorizonStyle();
+
+    Application::currentThemeVariantsWrapper = themeVariantsWrapper;
+    Application::currentStyle                = style;
 
     // Init glfw
     glfwSetErrorCallback(errorCallback);
@@ -226,23 +229,126 @@ bool Application::init(std::string title, Style style, Theme theme)
 #ifdef __SWITCH__
     {
         PlFontData font;
+        SetLanguage localeID = (SetLanguage)i18n::nxGetCurrentLocaleID();
 
         // Standard font
         Result rc = plGetSharedFontByType(&font, PlSharedFontType_Standard);
         if (R_SUCCEEDED(rc))
         {
-            Logger::info("Using Switch shared font");
-            Application::fontStash.regular = Application::loadFontFromMemory("regular", font.address, font.size, false);
+            Logger::info("Adding Switch shared standard font");
+            Application::fontStash.standard = Application::loadFontFromMemory("standard", font.address, font.size, false);
         }
 
-        // Korean font
-        rc = plGetSharedFontByType(&font, PlSharedFontType_KO);
-        if (R_SUCCEEDED(rc))
+        // Load other fonts on demand
+        bool isFullFallback = false;
+        AppletType at = appletGetAppletType();
+        if (at == AppletType_Application || at == AppletType_SystemApplication) // title takeover
         {
-            Logger::info("Adding Switch shared Korean font");
-            Application::fontStash.korean = Application::loadFontFromMemory("korean", font.address, font.size, false);
-            nvgAddFallbackFontId(Application::vg, Application::fontStash.regular, Application::fontStash.korean);
+            isFullFallback = true;
+            Logger::info("Non applet mode, font full fallback is enabled!");
         }
+        
+        if (localeID == SetLanguage_ZHCN || localeID == SetLanguage_ZHHANS || isFullFallback)
+        {
+            // S.Chinese font
+            rc = plGetSharedFontByType(&font, PlSharedFontType_ChineseSimplified);
+            if (R_SUCCEEDED(rc))
+            {
+                Logger::info("Adding Switch shared S.Chinese font");
+                Application::fontStash.schinese = Application::loadFontFromMemory("schinese", font.address, font.size, false);
+            }
+            // Ext S.Chinese font
+            rc = plGetSharedFontByType(&font, PlSharedFontType_ExtChineseSimplified);
+            if (R_SUCCEEDED(rc))
+            {
+                Logger::info("Adding Switch shared S.Chinese extended font");
+                Application::fontStash.extSchinese = Application::loadFontFromMemory("extSchinese", font.address, font.size, false);
+            }
+        }
+        if (localeID == SetLanguage_ZHTW || localeID == SetLanguage_ZHHANT || isFullFallback)
+        {
+            // T.Chinese font
+            rc = plGetSharedFontByType(&font, PlSharedFontType_ChineseTraditional);
+            if (R_SUCCEEDED(rc))
+            {
+                Logger::info("Adding Switch shared T.Chinese font");
+                Application::fontStash.tchinese = Application::loadFontFromMemory("tchinese", font.address, font.size, false);
+            }
+        }
+        if (localeID == SetLanguage_KO || isFullFallback)
+        {
+            // Korean font
+            rc = plGetSharedFontByType(&font, PlSharedFontType_KO);
+            if (R_SUCCEEDED(rc))
+            {
+                Logger::info("Adding Switch shared Korean font");
+                Application::fontStash.korean = Application::loadFontFromMemory("korean", font.address, font.size, false);
+            }
+        }
+
+        // Sequentially fallback to other fonts and decide regular font, also on demand
+        switch (localeID)
+            {
+                case SetLanguage_ZHCN :
+                case SetLanguage_ZHHANS :
+                    if (isFullFallback)
+                    {
+                        nvgAddFallbackFontId(Application::vg, Application::fontStash.schinese, Application::fontStash.extSchinese);
+                        nvgAddFallbackFontId(Application::vg, Application::fontStash.schinese, Application::fontStash.tchinese);
+                        nvgAddFallbackFontId(Application::vg, Application::fontStash.schinese, Application::fontStash.standard);
+                        nvgAddFallbackFontId(Application::vg, Application::fontStash.schinese, Application::fontStash.korean);
+                    }
+                    else
+                    {
+                        nvgAddFallbackFontId(Application::vg, Application::fontStash.schinese, Application::fontStash.extSchinese);
+                        nvgAddFallbackFontId(Application::vg, Application::fontStash.schinese, Application::fontStash.standard);
+                    }
+                    Logger::info("Using Switch shared S.Chinese font as regular");
+                    Application::fontStash.regular = Application::fontStash.schinese;
+                    break;
+                case SetLanguage_ZHTW :
+                case SetLanguage_ZHHANT :
+                    if (isFullFallback)
+                    {
+                        nvgAddFallbackFontId(Application::vg, Application::fontStash.tchinese, Application::fontStash.schinese);
+                        nvgAddFallbackFontId(Application::vg, Application::fontStash.tchinese, Application::fontStash.extSchinese);
+                        nvgAddFallbackFontId(Application::vg, Application::fontStash.tchinese, Application::fontStash.standard);
+                        nvgAddFallbackFontId(Application::vg, Application::fontStash.tchinese, Application::fontStash.korean);
+                    }
+                    else
+                    {
+                        nvgAddFallbackFontId(Application::vg, Application::fontStash.tchinese, Application::fontStash.standard);
+                    }
+                    Logger::info("Using Switch shared T.Chinese font as regular");
+                    Application::fontStash.regular = Application::fontStash.tchinese;
+                    break;
+                case SetLanguage_KO :
+                    if (isFullFallback)
+                    {
+                        nvgAddFallbackFontId(Application::vg, Application::fontStash.korean, Application::fontStash.standard);
+                        nvgAddFallbackFontId(Application::vg, Application::fontStash.korean, Application::fontStash.schinese);
+                        nvgAddFallbackFontId(Application::vg, Application::fontStash.korean, Application::fontStash.extSchinese);
+                        nvgAddFallbackFontId(Application::vg, Application::fontStash.korean, Application::fontStash.tchinese);
+                    }
+                    else
+                    {
+                        nvgAddFallbackFontId(Application::vg, Application::fontStash.korean, Application::fontStash.standard);
+                    }
+                    Logger::info("Using Switch shared Korean font as regular");
+                    Application::fontStash.regular = Application::fontStash.korean;
+                    break;
+                default:
+                    if (isFullFallback)
+                    {
+                        nvgAddFallbackFontId(Application::vg, Application::fontStash.standard, Application::fontStash.schinese);
+                        nvgAddFallbackFontId(Application::vg, Application::fontStash.standard, Application::fontStash.extSchinese);
+                        nvgAddFallbackFontId(Application::vg, Application::fontStash.standard, Application::fontStash.tchinese);
+                        nvgAddFallbackFontId(Application::vg, Application::fontStash.standard, Application::fontStash.korean);
+                    }
+                    Logger::info("Using Switch shared standard font as regular");
+                    Application::fontStash.regular = Application::fontStash.standard;
+                    break;
+            }
 
         // Extented font
         rc = plGetSharedFontByType(&font, PlSharedFontType_NintendoExt);
@@ -260,7 +366,7 @@ bool Application::init(std::string title, Style style, Theme theme)
         Application::fontStash.regular = Application::loadFont("regular", BOREALIS_ASSET("inter/Inter-Switch.ttf"));
 
     if (Application::fontStash.regular == -1)
-        brls::Logger::error("Couldn't load regular font, no text will be displayed!");
+        brls::Logger::warning("Couldn't load regular font, no text will be displayed!");
 
     if (access(BOREALIS_ASSET("Wingdings.ttf"), F_OK) != -1)
         Application::fontStash.sharedSymbols = Application::loadFont("sharedSymbols", BOREALIS_ASSET("Wingdings.ttf"));
@@ -278,7 +384,7 @@ bool Application::init(std::string title, Style style, Theme theme)
     }
     else
     {
-        Logger::error("Shared symbols font not found");
+        Logger::warning("Shared symbols font not found");
     }
 
     // Set Material as fallback
@@ -289,7 +395,7 @@ bool Application::init(std::string title, Style style, Theme theme)
     }
     else
     {
-        Logger::error("Material font not found");
+        Logger::warning("Material font not found");
     }
 
     // Load theme
@@ -298,15 +404,15 @@ bool Application::init(std::string title, Style style, Theme theme)
     setsysGetColorSetId(&nxTheme);
 
     if (nxTheme == ColorSetId_Dark)
-        Application::currentThemeVariant = ThemeVariant_DARK;
+        Application::currentThemeVariant = ThemeVariant::DARK;
     else
-        Application::currentThemeVariant = ThemeVariant_LIGHT;
+        Application::currentThemeVariant = ThemeVariant::LIGHT;
 #else
     char* themeEnv = getenv("BOREALIS_THEME");
     if (themeEnv != nullptr && !strcasecmp(themeEnv, "DARK"))
-        Application::currentThemeVariant = ThemeVariant_DARK;
+        Application::currentThemeVariant = ThemeVariant::DARK;
     else
-        Application::currentThemeVariant = ThemeVariant_LIGHT;
+        Application::currentThemeVariant = ThemeVariant::LIGHT;
 #endif
 
     // Init window size
@@ -375,7 +481,37 @@ bool Application::mainLoop()
     }
 
     // Trigger gamepad events
-    // TODO: Translate axis events to dpad events here
+        // Translate axis events to dpad events
+    int count;
+    const float* axes = glfwGetJoystickAxes(GLFW_JOYSTICK_1, &count);
+
+    //Make sure we got all our expected sticks before reading from them
+    if (count >= 4)
+    {
+        // Left Stick X
+        if (axes[0] < -.5)
+            Application::gamepad.buttons[GLFW_GAMEPAD_BUTTON_DPAD_LEFT] = GLFW_PRESS;
+        else if (axes[0] > .5)
+            Application::gamepad.buttons[GLFW_GAMEPAD_BUTTON_DPAD_RIGHT] = GLFW_PRESS;
+
+        // Left Stick Y
+        if (axes[1] < -.5)
+            Application::gamepad.buttons[GLFW_GAMEPAD_BUTTON_DPAD_UP] = GLFW_PRESS;
+        else if (axes[1] > .5)
+            Application::gamepad.buttons[GLFW_GAMEPAD_BUTTON_DPAD_DOWN] = GLFW_PRESS;
+
+        // Right Stick X
+        if (axes[2] < -.5)
+            Application::gamepad.buttons[GLFW_GAMEPAD_BUTTON_DPAD_LEFT] = GLFW_PRESS;
+        else if (axes[2] > .5)
+            Application::gamepad.buttons[GLFW_GAMEPAD_BUTTON_DPAD_RIGHT] = GLFW_PRESS;
+
+        // Right Stick Y
+        if (axes[3] < -.5)
+            Application::gamepad.buttons[GLFW_GAMEPAD_BUTTON_DPAD_UP] = GLFW_PRESS;
+        else if (axes[3] > .5)
+            Application::gamepad.buttons[GLFW_GAMEPAD_BUTTON_DPAD_DOWN] = GLFW_PRESS;
+    }
 
     bool anyButtonPressed               = false;
     bool repeating                      = false;
@@ -441,8 +577,10 @@ bool Application::mainLoop()
             std::this_thread::sleep_for(std::chrono::microseconds(toSleep));
         }
     }
-
-    return true;
+	
+	Application::focusLocked = false;
+    
+	return true;
 }
 
 void Application::quit()
@@ -452,6 +590,9 @@ void Application::quit()
 
 void Application::navigate(FocusDirection direction)
 {
+	if (Application::focusLocked)
+        return;
+
     View* currentFocus = Application::currentFocus;
 
     // Do nothing if there is no current focus or if it doesn't have a parent
@@ -460,7 +601,7 @@ void Application::navigate(FocusDirection direction)
         return;
 
     // Get next view to focus by traversing the views tree upwards
-    View* nextFocus = currentFocus->getParent()->getNextFocus(direction, currentFocus->getParentUserData());
+    View* nextFocus = currentFocus->getParent()->getNextFocus(direction, currentFocus);
 
     while (!nextFocus) // stop when we find a view to focus
     {
@@ -468,7 +609,7 @@ void Application::navigate(FocusDirection direction)
             break;
 
         currentFocus = currentFocus->getParent();
-        nextFocus    = currentFocus->getParent()->getNextFocus(direction, currentFocus->getParentUserData());
+        nextFocus    = currentFocus->getParent()->getNextFocus(direction, currentFocus);
     }
 
     // No view to focus at the end of the traversal: wiggle and return
@@ -479,6 +620,7 @@ void Application::navigate(FocusDirection direction)
     }
 
     // Otherwise give it focus
+    Application::focusLocked = true;
     Application::giveFocus(nextFocus);
 }
 
@@ -491,6 +633,10 @@ void Application::onGamepadButtonPressed(char button, bool repeating)
         return;
 
     Application::repetitionOldFocus = Application::currentFocus;
+
+    // Play click animation
+    if (Application::currentFocus && button == GLFW_GAMEPAD_BUTTON_A)
+        Application::currentFocus->playClickAnimation();
 
     // Actions
     if (Application::handleAction(button))
@@ -563,7 +709,7 @@ void Application::frame()
     frameContext.pixelRatio = (float)Application::windowWidth / (float)Application::windowHeight;
     frameContext.vg         = Application::vg;
     frameContext.fontStash  = &Application::fontStash;
-    frameContext.theme      = Application::getThemeValues();
+    frameContext.theme      = Application::getTheme();
 
     // GL Clear
     glClearColor(
@@ -633,19 +779,22 @@ void Application::exit()
 
     delete Application::taskManager;
     delete Application::notificationManager;
+
+    delete Application::currentThemeVariantsWrapper;
+    delete Application::currentStyle;
 }
 
 void Application::setDisplayFramerate(bool enabled)
 {
     if (!Application::framerateCounter && enabled)
     {
-        Logger::info("Enabling framerate counter");
+        Logger::debug("Enabling framerate counter");
         Application::framerateCounter = new FramerateCounter();
         Application::resizeFramerateCounter();
     }
     else if (Application::framerateCounter && !enabled)
     {
-        Logger::info("Disabling framerate counter");
+        Logger::debug("Disabling framerate counter");
         delete Application::framerateCounter;
         Application::framerateCounter = nullptr;
     }
@@ -784,7 +933,7 @@ void Application::pushView(View* view, ViewAnimation animation)
     bool fadeOut = last && !last->isTranslucent() && !view->isTranslucent(); // play the fade out animation?
     bool wait    = animation == ViewAnimation::FADE; // wait for the old view animation to be done before showing the new one?
 
-    view->registerAction("Exit", Key::PLUS, [] { Application::quit(); return true; });
+    view->registerAction("brls/hints/exit"_i18n, Key::PLUS, [] { Application::quit(); return true; });
     view->registerAction(
         "FPS", Key::MINUS, [] { Application::toggleFramerateDisplay(); return true; }, true);
 
@@ -878,22 +1027,17 @@ void Application::clear()
 
 Style* Application::getStyle()
 {
-    return &Application::currentStyle;
+    return Application::currentStyle;
 }
 
-void Application::setTheme(Theme theme)
+Theme* Application::getTheme()
 {
-    Application::currentTheme = theme;
+    return Application::currentThemeVariantsWrapper->getTheme(Application::currentThemeVariant);
 }
 
-ThemeValues* Application::getThemeValues()
+LibraryViewsThemeVariantsWrapper* Application::getThemeVariantsWrapper()
 {
-    return &Application::currentTheme.colors[Application::currentThemeVariant];
-}
-
-ThemeValues* Application::getThemeValuesForVariant(ThemeVariant variant)
-{
-    return &Application::currentTheme.colors[variant];
+    return Application::currentThemeVariantsWrapper;
 }
 
 ThemeVariant Application::getThemeVariant()
@@ -954,7 +1098,7 @@ std::string* Application::getCommonFooter()
 }
 
 FramerateCounter::FramerateCounter()
-    : Label(LabelStyle::LIST_ITEM, "FPS: ---")
+    : Label(LabelStyle::FPS, "FPS: ---")
 {
     this->setColor(nvgRGB(255, 255, 255));
     this->setVerticalAlign(NVG_ALIGN_MIDDLE);
