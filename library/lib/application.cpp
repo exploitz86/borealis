@@ -51,6 +51,11 @@
 #include <set>
 #include <thread>
 
+// fixing link when creating a dedicated lib
+extern "C"{
+#include "switch_wrapper.c"
+}
+
 // Constants used for scaling as well as
 // creating a window of the right size on PC
 constexpr uint32_t WINDOW_WIDTH  = 1280;
