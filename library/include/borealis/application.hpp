@@ -143,6 +143,8 @@ class Application
     static VoidEvent* getGlobalHintsUpdateEvent();
 
     static View* getCurrentFocus();
+    static View* getTopStackView();
+    static bool hasViewDisappearing();
 
     static std::string getTitle();
 

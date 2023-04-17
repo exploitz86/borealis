@@ -673,6 +673,17 @@ View* Application::getCurrentFocus()
 {
     return Application::currentFocus;
 }
+View* Application::getTopStackView()
+{
+  if( not viewStack.empty() ) return viewStack.back();
+  return nullptr;
+}
+bool Application::hasViewDisappearing()
+{
+  View* topView{getTopStackView()};
+  if( topView != nullptr and topView->isHidden() ) return true;
+  return false;
+}
 
 bool Application::handleAction(char button)
 {

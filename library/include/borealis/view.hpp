@@ -206,6 +206,7 @@ class View
     void setParent(View* parent, void* parentUserdata = nullptr);
     View* getParent();
     bool hasParent();
+    [[nodiscard]] bool isHidden() const { return hidden; }
 
     void* getParentUserData();
 
