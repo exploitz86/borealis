@@ -2,17 +2,14 @@
     Borealis, a Nintendo Switch UI Library
     Copyright (C) 2019-2020  natinusala
     Copyright (C) 2019  p-sam
-
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
     (at your option) any later version.
-
     This program is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
-
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
@@ -32,20 +29,13 @@ namespace brls
 
 // A list item
 // TODO: Use a Label with integrated ticker
-class ListItem : public View
-{
-
+  class ListItem : public View
+  {
   protected:
-    std::string label;
-    std::string subLabel;
-    std::string value;
-    bool valueFaint;
-    NVGcolor valueActiveColor;
-    bool valueActiveColorIsSet;
+    bool valueFaint = false, oldValueFaint = false;;
+    NVGcolor valueActiveColor{};
+    bool valueActiveColorIsSet{false};
 
-    std::string oldValue;
-    bool oldValueFaint;
-    float valueAnimation = 0.0f;
     bool checked = false; // check mark on the right
 
     unsigned textSize;
@@ -111,14 +101,14 @@ class ListItem : public View
     GenericEvent* getClickEvent();
 
     ~ListItem();
-};
+  };
 
 // Some spacing (to make groups of ListItems)
-class ListItemGroupSpacing : public Rectangle
-{
+  class ListItemGroupSpacing : public Rectangle
+  {
   public:
     ListItemGroupSpacing(bool separator = false);
-};
+  };
 
 // A list item with mutliple choices for its value
 // (will open a Dropdown)
@@ -127,10 +117,10 @@ class ListItemGroupSpacing : public Rectangle
 //
 // Parameter is either the selected value index
 // or -1 if the user cancelled
-typedef Event<int> ValueSelectedEvent;
+  typedef Event<int> ValueSelectedEvent;
 
-class SelectListItem : public ListItem
-{
+  class SelectListItem : public ListItem
+  {
   public:
     SelectListItem(std::string label, std::vector<std::string> values, unsigned selectedValue = 0, std::string description = "");
 
@@ -144,14 +134,14 @@ class SelectListItem : public ListItem
     unsigned selectedValue = 0;
 
     ValueSelectedEvent valueEvent;
-};
+  };
 
 // A list item with a ON/OFF value
 // that can be toggled
 // Use the click event to detect when the value
 // changes
-class ToggleListItem : public ListItem
-{
+  class ToggleListItem : public ListItem
+  {
   protected:
     bool toggleState;
     std::string onValue, offValue;
@@ -164,12 +154,12 @@ class ToggleListItem : public ListItem
     virtual bool onClick() override;
 
     bool getToggleState();
-};
+  };
 
 // A list item which spawns the swkbd
 // to input its value (string)
-class InputListItem : public ListItem
-{
+  class InputListItem : public ListItem
+  {
   protected:
     std::string helpText;
     int maxInputLength;
@@ -179,23 +169,23 @@ class InputListItem : public ListItem
     InputListItem(std::string label, std::string initialValue, std::string helpText, std::string description = "", int maxInputLength = 32, int kbdDisableBitmask = KeyboardKeyDisableBitmask::KEYBOARD_DISABLE_NONE);
 
     virtual bool onClick() override;
-};
+  };
 
 // A list item which spawns the swkbd
 // to input its value (integer)
-class IntegerInputListItem : public InputListItem
-{
+  class IntegerInputListItem : public InputListItem
+  {
   public:
     IntegerInputListItem(std::string label, int initialValue, std::string helpText, std::string description = "", int maxInputLength = 32, int kbdDisableBitmask = KeyboardKeyDisableBitmask::KEYBOARD_DISABLE_NONE);
 
     virtual bool onClick() override;
-};
+  };
 
-class List; // forward declaration for ListContentView::list
+  class List; // forward declaration for ListContentView::list
 
 // The content view of lists (used internally)
-class ListContentView : public BoxLayout
-{
+  class ListContentView : public BoxLayout
+  {
   public:
     ListContentView(List* list, size_t defaultFocus = 0);
 
@@ -204,14 +194,14 @@ class ListContentView : public BoxLayout
 
   private:
     List* list;
-};
+  };
 
 // A vertical list of various widgets, with proper margins and spacing
 // and a scroll bar
 // In practice it's a ScrollView which content view is
 // a ListContentView (BoxLayout)
-class List : public ScrollView
-{
+  class List : public ScrollView
+  {
   private:
     ListContentView* layout;
 
@@ -230,6 +220,6 @@ class List : public ScrollView
     void setSpacing(unsigned spacing);
     unsigned getSpacing();
     virtual void customSpacing(View* current, View* next, int* spacing);
-};
+  };
 
 } // namespace brls
