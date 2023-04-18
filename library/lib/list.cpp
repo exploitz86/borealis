@@ -316,6 +316,10 @@ namespace brls
       }
     }
   }
+  void ListItem::setValueActiveColor(NVGcolor color){
+    this->valueActiveColorIsSet = true;
+    this->valueActiveColor = color;
+  }
 
   std::string ListItem::getValue()
   {
