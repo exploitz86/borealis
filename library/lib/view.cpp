@@ -391,6 +391,9 @@ void View::drawBackground(NVGcontext* vg, FrameContext* ctx, Style* style)
     }
 }
 
+void View::clearActions(){
+  actions.clear();
+}
 void View::registerAction(std::string hintText, Key key, ActionListener actionListener, bool hidden)
 {
     if (auto it = std::find(this->actions.begin(), this->actions.end(), key); it != this->actions.end())

@@ -210,6 +210,7 @@ class View
 
     void* getParentUserData();
 
+    void clearActions();
     void registerAction(std::string hintText, Key key, ActionListener actionListener, bool hidden = false);
     void updateActionHint(Key key, std::string hintText);
     void setActionAvailable(Key key, bool available);
