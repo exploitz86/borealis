@@ -58,7 +58,7 @@ class Image : public View
     ~Image();
     Image(const Image& copy);
     Image(Image&& move) noexcept;
-    Image& operator=(const Image& cp_assign);
+//    Image& operator=(const Image& cp_assign);
     Image& operator=(Image&& mv_assign);
 
     void draw(NVGcontext* vg, int x, int y, unsigned width, unsigned height, Style* style, FrameContext* ctx) override;

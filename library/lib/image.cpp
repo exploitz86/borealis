@@ -75,11 +75,11 @@ unsigned char* Image::copyImgBuf() const
         return nullptr;
 }
 
-Image& Image::operator=(const Image& cp_assign)
-{
-    return *this = cp_assign;
-}
-
+//Image& Image::operator=(const Image& cp_assign)
+//{
+//    return *this = cp_assign;
+//}
+//
 Image& Image::operator=(Image&& mv_assign)
 {
     std::swap(*this, mv_assign);
