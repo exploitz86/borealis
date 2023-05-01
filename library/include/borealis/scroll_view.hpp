@@ -63,6 +63,8 @@ class ScrollView : public View
 
     void setContentView(View* view);
     View* getContentView();
+
+    void setUpdateScrollingOnNextFrame(bool update){ this->updateScrollingOnNextFrame = update; }
 };
 
 } // namespace brls
